@@ -15,162 +15,159 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Simple slider block for Moodle
+ * Form for editing HTML block instances.
  *
- * @package   block_slider
- * @copyright 2015 Kamil Łuczak    www.limsko.pl     kamil@limsko.pl
+ * @package   block_html
+ * @copyright 1999 onwards Martin Dougiamas (http://dougiamas.com)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class block_slider extends block_base {
-	public function init() {
-   	$this->title = get_string('pluginname', 'block_slider');
-   }
-   // The PHP tag and the curly bracket for the class definition
-   // will only be closed after there is another function added in the next section.
 
-   public function get_content() {
-   	global $DB, $CFG;
-      require_once($CFG->libdir . '/filelib.php');
-      $this->page->requires->jquery();
-      $this->page->requires->js('/blocks/slider/js/jquery.slides.js');
+class block_html extends block_base {
 
-		if ($this->content !== null) {
-      	return $this->content;
-      }
+    function init() {
+        $this->title = get_string('pluginname', 'block_html');
+    }
 
-      $this->content = new stdClass;
+    function has_config() {
+        return true;
+    }
 
-		if (!empty($this->config->text)) {
-      	$this->content->text = $this->config->text;
-		} else {
-			$this->content->text = '';
-		}
+    function applicable_formats() {
+        return array('all' => true);
+    }
 
-		$this->content->text .= '<div class="slider"><div id="slides">';
+    function specialization() {
+        $this->title = isset($this->config->title) ? format_string($this->config->title) : format_string(get_string('newhtmlblock', 'block_html'));
+    }
 
-		//get and display images
-		$fs = get_file_storage();
-		$files = $fs->get_area_files($this->context->id, 'block_slider', 'content');
-		foreach ($files as $file) {
-			$filename = $file->get_filename();
-    		if ($filename <> '.') {
-		   	$url = moodle_url::make_pluginfile_url($file->get_contextid(), $file->get_component(), $file->get_filearea(), null, $file->get_filepath(), $filename);
-				$this->content->text .= '<img src="'.$url.'" alt="'.$filename.'" />';
-			}
-		}
-		//Navigation Left/Right
-      if (!empty($this->config->navigation)) {
-      	$this->content->text .= '<a href="#" class="slidesjs-previous slidesjs-navigation"><i class="icon-chevron-left icon-large"></i></a>';
-			$this->content->text .= '<a href="#" class="slidesjs-next slidesjs-navigation"><i class="icon-chevron-right icon-large"></i></a>';
-      }
+    function instance_allow_multiple() {
+        return true;
+    }
 
-		$this->content->text .= '</div></div>';
+    function get_content() {
+        global $CFG;
 
-		if (!empty($this->config->width) and is_numeric($this->config->width)) {
-      	$width = $this->config->width;
-      } else {
-      	$width = 940;
-      }
+        require_once($CFG->libdir . '/filelib.php');
 
-		if (!empty($this->config->height) and is_numeric($this->config->height)) {
-      	$height = $this->config->height;
-      } else {
-      	$height = 528;
-      }
-
-		if (!empty($this->config->interval) and is_numeric($this->config->interval)) {
-      	$interval = $this->config->interval;
-      } else {
-      	$interval = 5000;
-      }
-
-      if (!empty($this->config->effect)) {
-         $effect = $this->config->effect;
-      } else {
-         $effect = 'fade';
-      }
-
-      if (!empty($this->config->pagination)) {
-         $pag = 'true';
-      } else {
-         $pag = 'false';
-      }
-
-		if (!empty($this->config->autoplay)) {
-         $autoplay = 'true';
-      } else {
-         $autoplay = 'false';
-      }
-
-      $this->content->footer = '
-<script type="text/javascript">
-$(function() {
-    $("#slides").slidesjs( {
-        width: '.$width.',
-        height: '.$height.',
-        navigation: {
-            active: false,
-            effect: "'.$effect.'",
-        },
-
-        pagination: {
-            active: '.$pag.',
-            // [boolean] Create pagination items.
-            // You cannot use your own pagination. Sorry.
-            effect: "'.$effect.'",
-            // [string] Can be either "slide" or "fade".
-        },
-
-        play: {
-            active: false,
-            // [boolean] Generate the play and stop buttons.
-            // You cannot use your own buttons. Sorry.
-            effect: "'.$effect.'",
-            // [string] Can be either "slide" or "fade".
-            interval: '.$interval.',
-            // [number] Time spent on each slide in milliseconds.
-            auto: '.$autoplay.',
-            // [boolean] Start playing the slideshow on load.
-            swap: false,
-            // [boolean] show/hide stop and play buttons
-            pauseOnHover: true,
-            // [boolean] pause a playing slideshow on hover
-            restartDelay: '.$interval.'
-            // [number] restart delay on inactive slideshow
+        if ($this->content !== NULL) {
+            return $this->content;
         }
-    });
-});
-</script>
-';
 
-		if (count($files) < 1 ) {
-			$this->content->text = get_string('noimages', 'block_slider');
-			$this->content->footer = '';
-		}
+        $filteropt = new stdClass;
+        $filteropt->overflowdiv = true;
+        if ($this->content_is_trusted()) {
+            // fancy html allowed only on course, category and system blocks.
+            $filteropt->noclean = true;
+        }
 
-      return $this->content;
-	}
+        $this->content = new stdClass;
+        $this->content->footer = '';
+        if (isset($this->config->text)) {
+            // rewrite url
+            $this->config->text = file_rewrite_pluginfile_urls($this->config->text, 'pluginfile.php', $this->context->id, 'block_html', 'content', NULL);
+            // Default to FORMAT_HTML which is what will have been used before the
+            // editor was properly implemented for the block.
+            $format = FORMAT_HTML;
+            // Check to see if the format has been properly set on the config
+            if (isset($this->config->format)) {
+                $format = $this->config->format;
+            }
+            $this->content->text = format_text($this->config->text, $format, $filteropt);
+        } else {
+            $this->content->text = '';
+        }
 
-   function has_config() {
-		return false;
-	}
-	public function instance_allow_multiple() {
-		return true;
-	}
-	public function applicable_formats() {
-  		return array(
-  			'site' => true,
-  			'course-view' => true,
-			'my'=> false
-  		);
-	}
-   public function hide_header() {
-		global $PAGE;
-		if($PAGE->user_is_editing()){
-      	return false;
-		} else {
-			return true;
-		}
-   }
+        unset($filteropt); // memory footprint
+
+        return $this->content;
+    }
+
+
+    /**
+     * Serialize and store config data
+     */
+    function instance_config_save($data, $nolongerused = false) {
+        global $DB;
+
+        $config = clone($data);
+        // Move embedded files into a proper filearea and adjust HTML links to match
+        $config->text = file_save_draft_area_files($data->text['itemid'], $this->context->id, 'block_html', 'content', 0, array('subdirs'=>true), $data->text['text']);
+        $config->format = $data->text['format'];
+
+        parent::instance_config_save($config, $nolongerused);
+    }
+
+    function instance_delete() {
+        global $DB;
+        $fs = get_file_storage();
+        $fs->delete_area_files($this->context->id, 'block_html');
+        return true;
+    }
+
+    /**
+     * Copy any block-specific data when copying to a new block instance.
+     * @param int $fromid the id number of the block instance to copy from
+     * @return boolean
+     */
+    public function instance_copy($fromid) {
+        $fromcontext = context_block::instance($fromid);
+        $fs = get_file_storage();
+        // This extra check if file area is empty adds one query if it is not empty but saves several if it is.
+        if (!$fs->is_area_empty($fromcontext->id, 'block_html', 'content', 0, false)) {
+            $draftitemid = 0;
+            file_prepare_draft_area($draftitemid, $fromcontext->id, 'block_html', 'content', 0, array('subdirs' => true));
+            file_save_draft_area_files($draftitemid, $this->context->id, 'block_html', 'content', 0, array('subdirs' => true));
+        }
+        return true;
+    }
+
+    function content_is_trusted() {
+        global $SCRIPT;
+
+        if (!$context = context::instance_by_id($this->instance->parentcontextid, IGNORE_MISSING)) {
+            return false;
+        }
+        //find out if this block is on the profile page
+        if ($context->contextlevel == CONTEXT_USER) {
+            if ($SCRIPT === '/my/index.php') {
+                // this is exception - page is completely private, nobody else may see content there
+                // that is why we allow JS here
+                return true;
+            } else {
+                // no JS on public personal pages, it would be a big security issue
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * The block should only be dockable when the title of the block is not empty
+     * and when parent allows docking.
+     *
+     * @return bool
+     */
+    public function instance_can_be_docked() {
+        return (!empty($this->config->title) && parent::instance_can_be_docked());
+    }
+
+    /*
+     * Add custom html attributes to aid with theming and styling
+     *
+     * @return array
+     */
+    function html_attributes() {
+        global $CFG;
+
+        $attributes = parent::html_attributes();
+
+        if (!empty($CFG->block_html_allowcssclasses)) {
+            if (!empty($this->config->classes)) {
+                $attributes['class'] .= ' '.$this->config->classes;
+            }
+        }
+
+        return $attributes;
+    }
 }
-// Here's the closing bracket for the class definition
