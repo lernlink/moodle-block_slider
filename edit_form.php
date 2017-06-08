@@ -26,6 +26,11 @@ class block_slider_edit_form extends block_edit_form {
 
         // Section header title according to language file.
         $mform->addElement('header', 'configheader', get_string('blocksettings', 'block'));
+        
+        $mform->addElement('text', 'config_title', get_string('configtitle', 'block_slider'));
+        $mform->setType('config_title', PARAM_TEXT);
+        
+        
         // A sample string variable with a default value.
         $mform->addElement('text', 'config_text', get_string('header', 'block_slider'));
         $mform->setDefault('config_text', '');
@@ -72,6 +77,19 @@ class block_slider_edit_form extends block_edit_form {
         if ($data = parent::get_data()) {
             file_save_draft_area_files($data->config_attachments, $this->block->context->id, 'block_slider', 'content', 0, 
             array('subdirs' => true));
+        }
+        
+        if (!$this->block->user_can_edit() && !empty($this->block->config->title)) {
+            // If a title has been set but the user cannot edit it format it nicely
+            $title = $this->block->config->title;
+            $defaults->config_title = format_string($title, true, $this->page->context);
+            // Remove the title from the config so that parent::set_data doesn't set it.
+            unset($this->block->config->title);
+        }
+        
+        if (isset($title)) {
+            // Reset the preserved title
+            $this->block->config->title = $title;
         }
     }
 }
