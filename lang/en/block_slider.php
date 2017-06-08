@@ -22,6 +22,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 $string['pluginname'] = 'Slider';
+$string['configtitle'] = 'Slider Title';
 $string['slider:addinstance'] = 'Add a new Slider block';
 $string['slider:myaddinstance'] = 'Add a new Slider block to the My Moodle page';
 $string['header'] = 'Header of slider';
